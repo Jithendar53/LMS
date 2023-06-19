@@ -1,0 +1,47 @@
+##root@master:~# cat db2.yml---webserver and databse creation
+---
+- name: configuring web server
+  hosts: webservers
+  tasks:
+  - name: install webserver
+    apt:
+      name: apache2
+      state: present
+  - name: start webserver
+    service:
+      name: apache2
+      enabled: yes
+      state: started
+
+  - name: enable firewall port
+    community.general.ufw:
+      rule: allow
+      port: '80:85'
+      proto: tcp
+
+  - name: copy index.html
+    copy:
+      src: /home/ansible/index.html
+      dest: /var/www/html
+      mode: '0644'
+
+- name: installing mysql db
+  hosts: dbservers
+  tasks:
+    - name: create db user
+      mysql_user:
+        name: "{{db_user}}"
+        password: "{{db_pass}}"
+        priv: '*.*:ALL'
+        host: '%'
+        state: present
+    - name: create database
+      mysql_db:
+         name: "{{db_name}}"
+         state: present
+
+  handlers:
+    - name: Restart mysql
+      service:
+        name: mysql
+        state: restarted
