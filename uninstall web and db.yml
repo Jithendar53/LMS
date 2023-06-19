@@ -1,0 +1,20 @@
+##root@master:~# cat db3.yml--uninstall web and db
+---
+- name: uninstall web server
+  hosts: webservers
+  tasks:
+  - name: un-install apache2
+    apt:
+      name: apache2
+      state: absent
+      autoremove: yes
+      clean: yes
+- name: un installing mysql db
+  hosts: dbservers
+  tasks:
+  - name: un-install db
+    apt:
+      name: mysql-server
+      state: absent
+      autoremove: yes
+      clean: yes

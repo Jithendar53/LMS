@@ -1,0 +1,217 @@
+root@master:/etc/ansible/roles/webserver/handlers# ls
+main.yml
+root@master:/etc/ansible/roles/webserver/handlers# cat main.yml
+---
+ 
+- name: restart apache
+  service: name=apache2 state=restarted enabled=yes
+
+root@master:/etc/ansible/roles/webserver/handlers# cd ..tasks
+bash: cd: ..tasks: No such file or directory
+root@master:/etc/ansible/roles/webserver/handlers# cd ../tasks
+
+root@master:/etc/ansible/roles/webserver/tasks# ls
+config.yaml  install.yaml  main.yml  service.yaml
+
+root@master:/etc/ansible/roles/webserver/tasks# cat install.yaml
+---
+- name: Install httpd Package
+  apt: name=apache2 state=latest
+- name: Install php Package
+  apt: name=php state=latest
+- name: Install php-mysql Package
+  apt: name=php-mysql state=latest
+...
+root@master:/etc/ansible/roles/webserver/tasks# cat config.yaml
+---
+- name: Copy httpd configuration file
+  copy: src=httpd.conf dest=/home/
+- name: Copy index.php file
+  copy: src=index.php dest=/var/www/html
+  notify:
+  - restart apache
+...
+root@master:/etc/ansible/roles/webserver/tasks# cat service.yaml
+---
+- name: Start and Enable httpd service
+  service: name=apache2 state=restarted enabled=yes
+ 
+...
+ 
+root@master:/etc/ansible/roles/webserver/tasks# cat main.yml
+---
+# tasks file for webserver
+#
+- import_tasks: install.yaml
+- import_tasks: config.yaml
+- import_tasks: service.yaml
+root@master:/etc/ansible/roles/webserver/tasks#
+
+has context menu
+root@master:/etc/ansible/roles/webserver/files# ls
+httpd.conf  index.php
+root@master:/etc/ansible/roles/webserver/files# cat httpd.conf
+root@master:/etc/ansible/roles/webserver/files# cat index.php
+Hello friends
+root@master:/etc/ansible/roles/webserver/files#
+
+root@master:/yamls# cat web.yaml
+---
+- name: install webserver
+  hosts: web
+  roles:
+    - webserver
+root@master:/yamls#
+
+[11:44 AM] Ramesh SS KHARAT (Guest)
+
+root@master:/yamls# cat db.yaml
+
+
+---
+- name: install webserver
+  hosts: db
+  roles:
+    - database
+
+
+root@master:/yamls# cd /etc/ansible/roles/database/
+
+
+root@master:/etc/ansible/roles/database# cd tasks/
+
+
+root@master:/etc/ansible/roles/database/tasks# ls
+
+
+createdb.yaml  install.yaml  main.yml  remotelogin.yaml  service.yaml  usercreation.yaml
+
+
+root@master:/etc/ansible/roles/database/tasks# cat install.yaml
+---
+- name: Installing Mysql  and dependencies
+  package:
+    name: "{​​​​​{​​​​​ item }​​​​​}​​​​​"
+    state: present
+    update_cache: yes
+  loop:
+    - mysql-server
+    - mysql-client
+    - python3-mysqldb
+    - libmysqlclient-dev
+  become: yes
+
+root@master:/etc/ansible/roles/database/tasks# cat createdb.yaml
+
+
+- name: creating medium_db
+  mysql_db:
+    name: "{​​​​​{​​​​​db_name}​​​​​}​​​​​"
+    state: present
+
+
+root@master:/etc/ansible/roles/database/tasks# cat remotelogin.yaml
+
+
+- name: Enable remote login to mysql
+  lineinfile:
+    path: /etc/mysql/mysql.conf.d/mysqld.cnf
+    regexp: '^bind-address'
+    line: 'bind-address = 0.0.0.0'
+    backup: yes
+  notify:
+    - Restart mysql
+ 
+root@master:/etc/ansible/roles/database/tasks# cat service.yaml
+
+
+- name: start and enable mysql service
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+
+
+root@master:/etc/ansible/roles/database/tasks# cat usercreation.yaml
+
+
+- name: creating mysql user (medium_post)
+  mysql_user:
+    name: "{​​​​​{​​​​​db_user}​​​​​}​​​​​"
+    password: "{​​​​​{​​​​​db_pass}​​​​​}​​​​​"
+    priv: '*.*:ALL'
+    host: '%'
+    state: present
+
+
+root@master:/etc/ansible/roles/database/tasks# cat main.yml
+
+
+---
+- import_tasks: install.yaml
+- import_tasks: service.yaml
+- import_tasks: createdb.yaml
+- import_tasks: usercreation.yaml
+- import_tasks: remotelogin.yaml
+...
+
+root@master:/etc/ansible/roles/database/tasks#
+
+
+[11:45 AM] Ramesh SS KHARAT (Guest)
+
+root@master:/etc/ansible/roles/database# cd handlers/
+
+
+root@master:/etc/ansible/roles/database/handlers# ls
+
+
+main.yml
+
+
+root@master:/etc/ansible/roles/database/handlers# cat main.yml
+
+
+- name: Restart mysql
+  service:
+    name: mysql
+    state: restarted
+ 
+root@master:/etc/ansible/roles/database/handlers# cd ../files/
+
+
+root@master:/etc/ansible/roles/database/files# ls
+
+
+root@master:/etc/ansible/roles/database/files# cd ../vars/
+
+
+root@master:/etc/ansible/roles/database/vars# ls
+
+
+main.yml
+
+
+root@master:/etc/ansible/roles/database/vars# cat main.yml
+
+db_user: admin
+db_pass: admin123
+db_name: cts
+
+
+root@master:/etc/ansible/roles/database/vars#
+
+<?php
+$servername = "52.150.12.116";
+$username = "admin";
+$password = "admin123";
+
+// Create connection
+$conn = new mysqli($servername, $username, $password);
+
+// Check connection
+if ($conn->connect_error) {
+  die("Connection failed: " . $conn->connect_error);
+}
+echo "Connected successfully";
+?>

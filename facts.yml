@@ -1,0 +1,14 @@
+---
+- name: gathering information about hosts using facts
+  hosts: web
+  tasks:
+    - name: pring host facts
+      debug:
+        msg:
+          my machine name is {{ ansible_hostname }}
+          my machine fqdn is {{ ansible_facts['fqdn'] }}
+          my machine IP address is {{ ansible_facts.default_ipv4.address }}
+          my machine IP address is {{ ansible_facts['default_ipv4']['address'] }}
+          my machine gateway address is {{ ansible_facts['default_ipv4']['gateway'] }}
+          my machine netmask is {{ ansible_facts['default_ipv4']['netmask'] }}
+          mount point information is {{ ansible_facts['mounts'] }}

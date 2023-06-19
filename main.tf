@@ -1,106 +1,96 @@
 terraform {
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 3.0"
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "3.35.0"
     }
   }
 }
 
-# Configure the AWS Provider
-provider "aws" {
-  region = "eu-west-3"
+provider "azurerm" {
+  features {}
 }
-
-
-resource "aws_vpc" "trainer1" {
-  cidr_block       = "100.0.0.0/16"
-  instance_tenancy = "default"
-
+resource "azurerm_resource_group" "Ansible" {
+  name     = "Ansible"
+  location = "eastus"
   tags = {
-    Name = "main"
+    "env" = "prod1"
+    "app" = "cts"
   }
 }
 
-resource "aws_ebs_volume" "trainer1" {
-  availability_zone = "eu-west-3a"
-  size              = 3
+resource "azurerm_virtual_network" "Ansible-net1" {
 
-  tags = {
-    Name = "trainer-volume"
-
-  }
+  name                = "Ansible-net1"
+  resource_group_name = azurerm_resource_group.Ansible.name
+  location            = azurerm_resource_group.Ansible.location
+  address_space       = ["99.99.0.0/24"]
 }
 
-resource "aws_security_group" "trainer-all" {
-  name        = "trainer-all"
-  description = "Allow all inbound traffic"
-  vpc_id      = aws_vpc.trainer1.id
+resource "azurerm_subnet" "Ansible-s1" {
+  name                = "Ansible-s1"
+  resource_group_name = azurerm_resource_group.Ansible.name
+  # location             = azurerm_resource_group.Ansible.location
+  address_prefixes     = ["99.99.0.0/25"]
+  virtual_network_name = azurerm_virtual_network.Ansible-net1.name
 
-  ingress {
-    description = "TLS from VPC"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [aws_vpc.trainer1.cidr_block]
-  }
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-
-  tags = {
-    Name = "allow_all"
-  }
+}
+resource "azurerm_subnet" "Ansible-s2" {
+  name                = "Ansible-s2"
+  resource_group_name = azurerm_resource_group.Ansible.name
+  # location            = azurerm_resource_group.Ansible.location
+  address_prefixes     = ["99.99.0.128/25"]
+  virtual_network_name = azurerm_virtual_network.Ansible-net1.name
 }
 
-resource "aws_ecs_cluster" "trainer1" {
-  name = "trainer1"
+resource "azurerm_public_ip" "Ansible-pip" {
+  count = 3
+  name                = "Ansible-public-ip-${count.index}"
+  location            = azurerm_resource_group.Ansible.location
+  resource_group_name = azurerm_resource_group.Ansible.name
+  allocation_method   = "Dynamic"
 
-  setting {
-    name  = "containerInsights"
-    value = "enabled"
+}
+
+resource "azurerm_network_interface" "vm-nic" {
+  count = 3
+  name                = "vm-nic-${count.index}"
+  resource_group_name = azurerm_resource_group.Ansible.name
+  location            = azurerm_resource_group.Ansible.location
+  ip_configuration {
+    name                          = "internal"
+    subnet_id                     = azurerm_subnet.Ansible-s1.id
+    private_ip_address_allocation = "Dynamic"
+    public_ip_address_id          = azurerm_public_ip.Ansible-pip[count.index].id
+
   }
+
 }
-resource "aws_iam_group" "trainer1" {
-  name = "trainer1"
-}
+resource "azurerm_linux_virtual_machine" "vm1" {
+  count = 3
+  name                            = "vm-${count.index}"
+  resource_group_name             = azurerm_resource_group.Ansible.name
+  location                        = azurerm_resource_group.Ansible.location
+  size                            = "Standard_B1s"
+  admin_username                  = "ansible"
+  admin_password                  = "Jithendar@7172"
+ 
 
-resource "aws_iam_group_policy" "trainer1_policy1" {
-  name  = "trainer1_policy1"
-  group = aws_iam_group.trainer1.name
-
-  # Terraform's "jsonencode" function converts a
-  # Terraform expression result to valid JSON syntax.
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "ec2:Describe*",
-        ]
-        Effect   = "Allow"
-        Resource = "*"
-      },
-    ]
-  })
-}
-
-resource "aws_iam_user" "trainer1" {
-  name = "trainer1"
-  tags = {
-    Name = "trainer1"
-  }
-}
-
-resource "aws_iam_user_group_membership" "trainer-assigmnet" {
-  user = aws_iam_user.trainer1.name
-
-  groups = [
-    aws_iam_group.trainer1.name,
+  disable_password_authentication = false
+  network_interface_ids = [
+    azurerm_network_interface.vm-nic[count.index].id
   ]
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+  source_image_reference {
+    publisher = "Canonical"
+    offer     = "0001-com-ubuntu-server-jammy"
+    sku       = "22_04-lts-gen2"
+    version   = "latest"
+  }
+  boot_diagnostics {
+    storage_account_uri = ""  
+}
 }

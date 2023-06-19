@@ -1,0 +1,75 @@
+ https://docs.ansible.com/ansible/latest/installation_guide/installation_distros.html#installing-ansible-on-ubuntu
+
+$ sudo apt update
+$ sudo apt install software-properties-common
+$ sudo add-apt-repository --yes --update ppa:ansible/ansible
+$ sudo apt install ansible
+ansible --version
+
+rh294-8.4-student-guide.pdf
+  keybased Authentication
+  go to master node:
+99.99.0.4 master
+99.99.0.5 node2
+99.99.0.6 node1
+
+
+  1. ssh-keygen -t rsa
+  2. ‬
+  3. copy public key 
+  4. login client1
+  5. with root login open vi /root/.ssh/authorized_keys
+  6. paster public key and save the file
+  7, from master node test connection : ssh root@client1
+
+41  # host inventory
+   42  cd /etc/ansible/
+   43  ls
+   44  vi hosts
+   45  pwd
+   46  ansible webserver -m command -a 'hostname'
+   47  ansible database -m command -a 'hostname'
+
+ansible-playbook /home/ansible/web.yml --syntax-check
+ansible-playbook -C /home/ansible/web.yml
+ansible-playbook  /home/ansible/web.yml
+ansible all --list-host
+ansible all -m ping
+ansible webservers -m setup ---->Ansible Facts
+
+
+
+21  clear
+   22  ansible web -m setup
+   23  ansible web -m setup | less
+   24  clear
+   25  ansible-doc setup
+   26  ansible web -m setup -a 'hostname'
+   27  ansible web -m setup -a 'filter=ansible_*_mb'
+   28  ansible web -m setup -a 'filter=ansible_hostname'
+   29  ansible db -m setup -a 'filter=ansible_hostname'
+   30  ansible db -m setup -a 'filter=ansible_fqdn'
+   31  ansible db -m setup -a 'filter=ansible_eth[0-2]'
+   32  ansible db -m setup -a 'filter=ansible_ipv4'
+   33  ansible db -m setup -a 'filter=ansible_default_ipv4'
+   34  ansible db -m setup -a 'filter=ansible_default_ipv4_address'
+   35  ansible db -m setup -a 'filter=ansible_default_ipv4.address'
+   36  ansible db -m setup -a 'filter=ansible_default_ipv4'
+
+Gathering the ansible facts:
+
+root@master:/yamls# cat facts.yaml
+---
+- name: gathering information about hosts using facts
+  hosts: web
+  tasks:
+    - name: pring host facts
+      debug:
+        msg:
+          my machine name is {{ ansible_hostname }}
+          my machine fqdn is {{ ansible_facts['fqdn'] }}
+          my machine IP address is {{ ansible_facts.default_ipv4.address }}
+          my machine IP address is {{ ansible_facts['default_ipv4']['address'] }}
+          my machine gateway address is {{ ansible_facts['default_ipv4']['gateway'] }}
+          my machine netmask is {{ ansible_facts['default_ipv4']['netmask'] }}
+          mount point information is {{ ansible_facts['mounts'] }}
